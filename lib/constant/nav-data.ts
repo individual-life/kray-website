@@ -1,5 +1,14 @@
 export const navData = [
-    "Home",
-    "Labs",
-    "Notes",
+    {
+        name: "Home",
+        href: "/"
+    },
+    {
+        name: "Labs",
+        href: "/labs"
+    },
+    {
+        name: "Notes",
+        href: "/notes"
+    }
 ]
