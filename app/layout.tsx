@@ -17,10 +17,23 @@ export const gajrajOne = Gajraj_One({
 
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://kray-web.com'),
   title: "Kray - Web & App Development",
   description: "Kray Web Solutions: Precision coding for peak performance. We craft mobile-first, SEO-optimized websites that ensure your business stays visible and ranks",
-  alternates: {
-    canonical: "https://krayweb.com",
+  openGraph: {
+    title: "Kray - Web & App Development",
+    description: "Kray Web Solutions: Precision coding for peak performance. We craft mobile-first, SEO-optimized websites that ensure your business stays visible and ranks",
+    type: "website",
+    url: "https://kray-web.com",
+    siteName: "Kray - Web & App Development",
+    images: [
+      {
+        url: "/images/logo.png",
+        width: 1200,
+        height: 630,
+        alt: "Kray - Web & App Development",
+      },
+    ],
   },
 };
 
