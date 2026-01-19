@@ -1,9 +1,12 @@
-import { gajrajOne } from '@/app/layout'
+import { gajrajOne } from '@/app/fonts'
 import Image from 'next/image'
 
 const HeaderSection = () => {
     return (
-        <article className='h-[calc(100vh-60px)] mx-[9vw] flex items-end pb-[50px]'>
+        <article className='h-[calc(100vh-60px)] mx-[9vw] flex flex-col items-end pb-[50px] '>
+            <div className='w-full  flex-1 '>
+
+            </div>
             <div className='w-full grid grid-cols-12 gap-5 items-end'>
                 <section className='col-span-2 flex items-start'>
                     <p className={`${gajrajOne.className} text-[50px] text-(--color-grey)`}>
