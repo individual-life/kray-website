@@ -17,7 +17,7 @@ const Header = ({ showIconSend = true }: Props) => {
             <nav className='col-start-3 col-span-2 bg-white rounded-full h-[45px] flex justify-center items-center gap-[40px]'>
                 {
                     navData.map((item, index) => (
-                        <Link key={index} href={item.href} className='flex justify-center items-center text-[14px] font-normal  cursor-pointer text-(--color-grey) hover:text-black duration-300 ease-in-out'>
+                        <Link key={index} href={item.href} className='flex justify-center items-center text-[14px] font-normal  cursor-pointer text-black duration-300 ease-in-out'>
                             {item.name}
                         </Link>
                     ))

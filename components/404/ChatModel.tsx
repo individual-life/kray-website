@@ -49,7 +49,7 @@ const ChatModel = () => {
                     ))}
                 </div>
                 <div className='w-full flex justify-center mt-[100px]'>
-                    <p className='text-[14px] text-center font-normal text-(--color-grey) w-[28%] mt-[20px]'>Need human help? <span className='text-(--color-orange) cursor-pointer'>Contact us</span></p>
+                    <p className='text-[14px] text-center font-normal text-(--color-grey) w-[28%] mt-[20px]'>Need human help? <span className='text-(--color-orange) cursor-pointer'>Contact me</span></p>
                 </div>
             </div>
         </div>
