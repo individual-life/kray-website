@@ -29,7 +29,7 @@ export const krayPlannerNavData = [
 export const krayPlannerSideNavData = [
     {
         name: "Menu",
-        href: "/kray-planner/menu",
+        href: "/kray-planner/",
         icon: "/icons/menu.svg"
     },
     {
@@ -62,7 +62,7 @@ export const krayPlannerSideLogoutData = [
     },
     {
         name: "Logout",
-        href: "/kray-planner/logout",
+        href: "/",
         icon: "/icons/logout.svg"
     }
 ]
