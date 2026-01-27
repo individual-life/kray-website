@@ -1,3 +1,14 @@
+import { BoardIcon } from "@/public/icons/BoardIcon";
+import { CalendarIcon } from "@/public/icons/CalendarIcon";
+import { ClockIcon } from "@/public/icons/ClockIcon";
+import { EmailIcon } from "@/public/icons/EmailIcon";
+import { LogoutIcon } from "@/public/icons/LogoutIcon";
+import { MenuIcon } from "@/public/icons/MenuIcon";
+import { MessageIcon } from "@/public/icons/MessageIcon";
+import { SettingIcon } from "@/public/icons/SettingIcon";
+import { SheetIcon } from "@/public/icons/SheetIcon";
+import { SupportIcon } from "@/public/icons/SupportIcon";
+
 export const krayPlannerNavData = [
     {
         name: "Overview",
@@ -30,27 +41,27 @@ export const krayPlannerSideNavData = [
     {
         name: "Menu",
         href: "/kray-planner/",
-        icon: "/icons/menu.svg"
+        icon: MenuIcon
     },
     {
         name: "Schedule",
         href: "/kray-planner/schedule",
-        icon: "/icons/calendar.svg"
+        icon: CalendarIcon
     },
     {
         name: "Email",
         href: "/kray-planner/email",
-        icon: "/icons/email.svg"
+        icon: EmailIcon
     },
     {
         name: "Chat",
         href: "/kray-planner/chat",
-        icon: "/icons/message.svg"
+        icon: MessageIcon
     },
     {
         name: "Settings",
         href: "/kray-planner/settings",
-        icon: "/icons/setting.svg"
+        icon: SettingIcon
     },
 ]
 
@@ -58,11 +69,30 @@ export const krayPlannerSideLogoutData = [
     {
         name: "Support",
         href: "/kray-planner/support",
-        icon: "/icons/support.svg"
+        icon: SupportIcon
     },
     {
         name: "Logout",
         href: "/",
-        icon: "/icons/logout.svg"
+        icon: LogoutIcon
+    }
+]
+
+export const krayPlannerKanbanBoardData = [
+    {
+        name: "Board",
+        icon: BoardIcon
+    },
+    {
+        name: "Timeline",
+        icon: ClockIcon
+    },
+    {
+        name: "Spreadsheet",
+        icon: SheetIcon
+    },
+    {
+        name: "Calendar",
+        icon: CalendarIcon
     }
 ]

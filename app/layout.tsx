@@ -3,12 +3,14 @@ import "./globals.css";
 import { poppins } from "./fonts";
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://kray-web.com'),
+  metadataBase: new URL("https://kray-web.com"),
   title: "Kray - Web & App Development",
-  description: "Kray Web Solutions: Precision coding for peak performance. We craft mobile-first, SEO-optimized websites that ensure your business stays visible and ranks",
+  description:
+    "Kray Web Solutions: Precision coding for peak performance. We craft mobile-first, SEO-optimized websites that ensure your business stays visible and ranks",
   openGraph: {
     title: "Kray - Web & App Development",
-    description: "Kray Web Solutions: Precision coding for peak performance. We craft mobile-first, SEO-optimized websites that ensure your business stays visible and ranks",
+    description:
+      "Kray Web Solutions: Precision coding for peak performance. We craft mobile-first, SEO-optimized websites that ensure your business stays visible and ranks",
     type: "website",
     url: "https://kray-web.com",
     siteName: "Kray - Web & App Development",
@@ -23,7 +25,6 @@ export const metadata: Metadata = {
   },
 };
 
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -31,11 +32,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${poppins.className} antialiased `}
-      >
-        {children}
-      </body>
+      <body className={`${poppins.className} antialiased `}>{children}</body>
     </html>
   );
 }
