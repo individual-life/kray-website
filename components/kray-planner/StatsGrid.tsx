@@ -70,8 +70,9 @@ const StatsGrid = () => {
         isOpen={isShowModal}
         onClose={() => setShowModal(false)}
         onConfirm={handleAddNewFolder}
+        mainText="Add"
         title="Add New Folder"
-        description="Make changes to your profile here. Click save when you're done."
+        description="Make changes to your folder here. Click save when you're done."
       >
         <div className="mt-4">
           <label htmlFor="folderName" className={` text-[14px] font-normal`}>

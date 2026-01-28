@@ -1,6 +1,5 @@
 import React from "react";
 
-// Note: This component is located in public/icons as requested.
 export const SearchIcon = ({
   color,
   size = 24,
