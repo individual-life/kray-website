@@ -13,6 +13,7 @@ export interface Task {
     members: string[]; 
     comments: number;
     attachments: number;
+    status: string;
 }
 
 export interface Column {

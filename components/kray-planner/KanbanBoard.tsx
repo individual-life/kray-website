@@ -4,9 +4,27 @@ import { krayPlannerKanbanBoardData } from "@/lib/constant/kray-planner";
 import { PlusWhiteIcon } from "@/public/icons/PlusWhiteIcon";
 import { useState } from "react";
 import KanbanColumn from "./KanbanColumn";
+import TimeLine from "./TimeLine";
+import SpreadSheet from "./SpreadSheet";
+import Calendar from "./Calendar";
 
 const KanbanBoard = () => {
   const [boardActive, setBoardActive] = useState(krayPlannerKanbanBoardData[0]);
+
+  const renderBoard = () => {
+    switch (boardActive.name) {
+      case "Board":
+        return <KanbanColumn />;
+      case "Timeline":
+        return <TimeLine />;
+      case "Spreadsheet":
+        return <SpreadSheet />;
+      case "Calendar":
+        return <Calendar />;
+      default:
+        return <KanbanColumn />;
+    }
+  };
 
   return (
     <div className="mt-[30px] w-full ">
@@ -44,9 +62,7 @@ const KanbanBoard = () => {
         </div>
       </div>
 
-      <div className="mt-[20px]">
-        <KanbanColumn />
-      </div>
+      <div className="mt-[20px]">{renderBoard()}</div>
     </div>
   );
 };
