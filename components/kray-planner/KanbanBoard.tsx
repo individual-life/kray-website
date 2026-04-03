@@ -6,7 +6,7 @@ import { useState } from "react";
 import KanbanColumn from "./KanbanColumn";
 import TimeLine from "./TimeLine";
 import SpreadSheet from "./SpreadSheet";
-import Calendar from "./Calendar";
+import Calendar from "./calendar/Calendar";
 
 const KanbanBoard = () => {
   const [boardActive, setBoardActive] = useState(krayPlannerKanbanBoardData[0]);
