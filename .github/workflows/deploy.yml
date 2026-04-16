@@ -25,6 +25,8 @@ jobs:
             git remote set-url origin https://x-access-token:${{ secrets.EC2_GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
               git pull origin main
             fi
+            docker-compose down --remove-orphans || true
+            sudo fuser -k 80/tcp
             docker-compose up -d --build
             docker image prune -f
 
