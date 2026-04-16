@@ -20,8 +20,9 @@ jobs:
           script: |
             mkdir -p ~/kray-app && cd ~/kray-app
             if [ ! -d ".git" ]; then
-              git clone https://github.com/${{ github.repository }}.git .
+              git clone https://x-access-token:${{ secrets.EC2_GITHUB_TOKEN }}@github.com/${{ github.repository }}.git .
             else
+            git remote set-url origin https://x-access-token:${{ secrets.EC2_GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
               git pull origin main
             fi
             docker-compose up -d --build
