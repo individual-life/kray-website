@@ -50,7 +50,7 @@ const ChatModel = () => {
               className="h-full w-full outline-none border-none text-[14px]"
             />
             <div className="h-[38px] w-[50px] bg-(--color-orange) rounded-full flex justify-center items-center cursor-pointer">
-              <SendIcon size={20} />
+              <SendIcon size={20} color="white" />
             </div>
           </div>
         </div>
