@@ -21,8 +21,8 @@ jobs:
             mkdir -p ~/kray-app && cd ~/kray-app
             if [ ! -d ".git" ]; then
               git clone https://x-access-token:${{ secrets.EC2_GITHUB_TOKEN }}@github.com/${{ github.repository }}.git .
+              git remote set-url origin https://x-access-token:${{ secrets.EC2_GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
             else
-            git remote set-url origin https://x-access-token:${{ secrets.EC2_GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
               git pull origin main
             fi
             docker-compose down --remove-orphans || true
@@ -32,3 +32,4 @@ jobs:
 
 # Use classic token github
 # test
+# need to the app run on port 3000, and use nginx redirect to port
