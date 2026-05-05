@@ -33,3 +33,11 @@ jobs:
 # Use classic token github
 # test
 # need to the app run on port 3000, and use nginx redirect to port
+
+##Config ssl
+# Tạo thư mục lưu trữ file xác thực trên máy host
+# sudo mkdir -p /var/www/html/.well-known/pki-validation/
+# Tạo file với nội dung và tên file chính xác từ ảnh của bạn
+# sudo bash -c 'printf "FC1AB4919E13A93C27DD8F6F55540462.5DB9A51EEC64F4BF850FD0D506CDF726\nsectigo.com\nnjwWCcFT" > /var/www/html/.well-known/pki-validation/D36B92984314CFDB40CC52AD372CEB53.txt'
+# Cấp quyền đọc cho Nginx
+# sudo chmod -R 755 /var/www/html/.well-known

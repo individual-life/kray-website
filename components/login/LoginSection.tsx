@@ -15,22 +15,8 @@ const LoginSection = () => {
   const [passwordError, setPasswordError] = useState("");
 
   const validatePassword = () => {
-    const hasUpperCase = /[A-Z]/.test(password);
-    const hasLowerCase = /[a-z]/.test(password);
-    const hasNumber = /[0-9]/.test(password);
-    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
-    const isLengthValid = password.length >= 8;
-
-    if (!isLengthValid) {
-      setPasswordError("Password must be at least 8 characters long.");
-    } else if (!hasUpperCase) {
-      setPasswordError("Password must contain at least one uppercase letter.");
-    } else if (!hasLowerCase) {
-      setPasswordError("Password must contain at least one lowercase letter.");
-    } else if (!hasNumber) {
-      setPasswordError("Password must contain at least one number.");
-    } else if (!hasSpecialChar) {
-      setPasswordError("Password must contain at least one special character.");
+    if (!password) {
+      setPasswordError("Password cannot be empty.");
     } else {
       setPasswordError("");
     }
@@ -43,7 +29,7 @@ const LoginSection = () => {
 
   return (
     <div className="h-[calc(100vh-60px)] grid grid-cols-12 px-[9vw] gap-x-5">
-      <div className="col-span-8 mb-[50px] mt-[30px] bg-[rgba(0,0,0,0.1)] rounded-[20px] relative flex flex-col justify-center items-center"></div>
+      <div className="col-span-8 mb-[50px] mt-[30px] rounded-[20px] relative flex flex-col justify-center items-center"></div>
       <div className=" col-span-4  mb-[50px] mt-[30px] rounded-[20px] relative p-[20px] flex flex-col justify-center ">
         <div>
           <h1 className={`${poppins.className} text-[19px] font-medium`}>
