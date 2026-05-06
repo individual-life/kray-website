@@ -7,7 +7,9 @@ import { PenIcon } from "@/public/icons/PenIcon";
 import { EraserIcon } from "@/public/icons/EraserIcon";
 import { HandIcon } from "@/public/icons/HandIcon";
 import { NoteIcon } from "@/public/icons/NoteIcon";
+import { TextIcon } from "@/public/icons/TextIcon";
 import { TrashIcon } from "@/public/icons/TrashIcon";
+import Modal from "../../common/Modal";
 
 interface Point {
   x: number;
@@ -30,6 +32,9 @@ interface StickyNote {
   underline?: boolean;
   fontSize?: number;
   fontFamily?: string;
+  type?: "note" | "text";
+  width?: number;
+  height?: number;
 }
 interface BoardData {
   lines: Line[];
@@ -63,9 +68,13 @@ const FONT_SIZES = [12, 14, 16, 18, 20, 24];
 const AutoResizeTextArea = ({
   note,
   updateNoteText,
+  isFocused,
+  setIsFocused,
 }: {
   note: StickyNote;
   updateNoteText: (id: string, text: string) => void;
+  isFocused: boolean;
+  setIsFocused: (focused: boolean) => void;
 }) => {
   const textStyle: React.CSSProperties = {
     fontWeight: note.bold ? "bold" : "normal",
@@ -73,23 +82,31 @@ const AutoResizeTextArea = ({
     textDecoration: note.underline ? "underline" : "none",
     fontSize: `${note.fontSize ?? 14}px`,
     fontFamily: note.fontFamily ?? "sans-serif",
+    color: note.type === "text" ? note.color : "rgba(0,0,0,0.8)",
   };
 
   return (
-    <div className="relative w-full flex-1 grid min-h-[135px]">
+    <div
+      className={`relative ${note.type === "text" ? "min-w-max" : "w-full flex-1 min-h-[135px]"} grid`}
+    >
       <div
-        className="invisible whitespace-pre-wrap wrap-break-word col-start-1 row-start-1 w-full p-[15px] pt-[5px] max-h-[285px] overflow-hidden"
+        className={`invisible whitespace-pre col-start-1 row-start-1 ${note.type === "text" ? "w-auto p-2" : "w-full p-[15px] pt-[5px] max-h-[285px]"} overflow-hidden`}
         style={textStyle}
         aria-hidden="true"
       >
-        {note.text + " "}
+        {note.text ? note.text + " " : "Type here..."}
       </div>
       <textarea
         value={note.text}
         onChange={(e) => updateNoteText(note.id, e.target.value)}
-        placeholder="Type your thoughts here..."
-        className="col-start-1 row-start-1 w-full h-full bg-transparent border-none outline-none resize-none overflow-y-auto text-[rgba(0,0,0,0.8)] placeholder-[rgba(0,0,0,0.4)] p-[15px] pt-[5px] custom-scrollbar"
+        onFocus={() => setIsFocused(true)}
+        onBlur={() => setIsFocused(false)}
+        placeholder={
+          note.type === "text" ? "Type here..." : "Type your thoughts here..."
+        }
+        className={`col-start-1 row-start-1 w-0 min-w-full h-full bg-transparent border-none outline-none resize-none ${note.type === "text" ? "overflow-hidden" : isFocused ? "overflow-y-auto" : "overflow-hidden"} placeholder-[rgba(0,0,0,0.4)] ${note.type === "text" ? "p-2" : "p-[15px] pt-[5px]"} custom-scrollbar`}
         style={textStyle}
+        rows={1}
       />
     </div>
   );
@@ -97,18 +114,18 @@ const AutoResizeTextArea = ({
 
 const WhiteBoard = () => {
   const [activeTask, setActiveTask] = useState<Task | null>(null);
-  const [tool, setTool] = useState<"pen" | "note" | "eraser" | "pan">("pen");
+  const [tool, setTool] = useState<"pen" | "note" | "text" | "eraser" | "pan">(
+    "pen",
+  );
   const [lines, setLines] = useState<Line[]>([]);
   const [notes, setNotes] = useState<StickyNote[]>([]);
 
   const [penColor, setPenColor] = useState(COLORS[0]);
   const [penWidth, setPenWidth] = useState(3);
 
-  // Drawing state
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentLine, setCurrentLine] = useState<Line | null>(null);
 
-  // Note Interaction state
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
   const [clipboardNote, setClipboardNote] = useState<StickyNote | null>(null);
   const [contextMenu, setContextMenu] = useState<{
@@ -117,11 +134,21 @@ const WhiteBoard = () => {
     noteId: string;
   } | null>(null);
 
-  // Zoom & Drag state
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const [draggingNoteId, setDraggingNoteId] = useState<string | null>(null);
+  const [resizingNoteId, setResizingNoteId] = useState<string | null>(null);
+  const [focusedNoteId, setFocusedNoteId] = useState<string | null>(null);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+
+  const interactionRef = useRef<{
+    type: "pan" | "drag" | "resize" | "draw";
+    startX: number;
+    startY: number;
+    initialData: any;
+  } | null>(null);
+
   const [lastPointerPos, setLastPointerPos] = useState<{
     x: number;
     y: number;
@@ -129,9 +156,15 @@ const WhiteBoard = () => {
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const notesRef = useRef(notes);
+  const linesRef = useRef(lines);
+
+  useEffect(() => {
+    notesRef.current = notes;
+    linesRef.current = lines;
+  }, [notes, lines]);
   const noteDragStartPos = useRef<{ x: number; y: number } | null>(null);
 
-  // 1. Fetch Active Task
   useEffect(() => {
     const fetchActiveTask = () => {
       const tasks = TaskService.getTasks();
@@ -145,7 +178,6 @@ const WhiteBoard = () => {
       window.removeEventListener("kray_todo_tasks_updated", fetchActiveTask);
   }, []);
 
-  // 2. Load Data from LocalStorage
   useEffect(() => {
     if (activeTask) {
       const saved = localStorage.getItem(`kray_board_${activeTask.id}`);
@@ -165,7 +197,6 @@ const WhiteBoard = () => {
       setLines([]);
       setNotes([]);
     }
-    // Reset view when switching tasks
     setZoom(1);
     setPan({ x: 0, y: 0 });
   }, [activeTask]);
@@ -182,7 +213,6 @@ const WhiteBoard = () => {
     }
   };
 
-  // 3. Canvas Resizing and Drawing
   useEffect(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
@@ -260,21 +290,26 @@ const WhiteBoard = () => {
     setSelectedNoteId(null);
     setContextMenu(null);
 
-    if (tool === "pan") {
-      setIsPanning(true);
-      let clientX, clientY;
-      if ("touches" in e) {
-        clientX = e.touches[0].clientX;
-        clientY = e.touches[0].clientY;
-      } else {
-        clientX = (e as React.MouseEvent).clientX;
-        clientY = (e as React.MouseEvent).clientY;
-      }
-      setLastPointerPos({ x: clientX, y: clientY });
-      return;
+    const pos = getMousePos(e);
+    let clientX, clientY;
+    if ("touches" in e) {
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else {
+      clientX = (e as React.MouseEvent).clientX;
+      clientY = (e as React.MouseEvent).clientY;
     }
 
-    const pos = getMousePos(e);
+    if (tool === "pan") {
+      setIsPanning(true);
+      interactionRef.current = {
+        type: "pan",
+        startX: clientX,
+        startY: clientY,
+        initialData: { ...pan },
+      };
+      return;
+    }
 
     if (tool === "note") {
       const newNote: StickyNote = {
@@ -291,8 +326,31 @@ const WhiteBoard = () => {
       return;
     }
 
+    if (tool === "text") {
+      const newNote: StickyNote = {
+        id: Date.now().toString(),
+        x: pos.x,
+        y: pos.y,
+        text: "",
+        color: "#1e1e1e", // Default black for text
+        type: "text",
+      };
+      const updatedNotes = [...notes, newNote];
+      setNotes(updatedNotes);
+      saveData(lines, updatedNotes);
+      setSelectedNoteId(newNote.id);
+      setTool("pen");
+      return;
+    }
+
     if (tool === "pen" || tool === "eraser") {
       setIsDrawing(true);
+      interactionRef.current = {
+        type: "draw",
+        startX: clientX,
+        startY: clientY,
+        initialData: null,
+      };
       setCurrentLine({
         color: tool === "eraser" ? "rgba(0,0,0,1)" : penColor,
         width: tool === "eraser" ? 20 : penWidth,
@@ -302,70 +360,133 @@ const WhiteBoard = () => {
     }
   };
 
-  const handlePointerMoveGlobal = (e: React.MouseEvent | React.TouchEvent) => {
-    let clientX, clientY;
-    if ("touches" in e) {
-      clientX = e.touches[0].clientX;
-      clientY = e.touches[0].clientY;
-    } else {
-      clientX = (e as React.MouseEvent).clientX;
-      clientY = (e as React.MouseEvent).clientY;
-    }
+  useEffect(() => {
+    const handleMove = (e: MouseEvent | TouchEvent) => {
+      if (!interactionRef.current) return;
 
-    if (isPanning && lastPointerPos && tool === "pan") {
-      const dx = clientX - lastPointerPos.x;
-      const dy = clientY - lastPointerPos.y;
-      setPan({ x: pan.x + dx, y: pan.y + dy });
-      setLastPointerPos({ x: clientX, y: clientY });
-      return;
-    }
-    if (draggingNoteId && lastPointerPos) {
-      const dx = (clientX - lastPointerPos.x) / zoom;
-      const dy = (clientY - lastPointerPos.y) / zoom;
+      let clientX, clientY;
+      if ("touches" in e) {
+        if (e.touches.length === 0) return;
+        clientX = e.touches[0].clientX;
+        clientY = e.touches[0].clientY;
+      } else {
+        clientX = (e as MouseEvent).clientX;
+        clientY = (e as MouseEvent).clientY;
+      }
 
-      setNotes(
-        notes.map((n) =>
-          n.id === draggingNoteId ? { ...n, x: n.x + dx, y: n.y + dy } : n,
-        ),
-      );
-      setLastPointerPos({ x: clientX, y: clientY });
-      return;
-    }
+      const { type, startX, startY, initialData } = interactionRef.current;
+      const dx = (clientX - startX) / zoom;
+      const dy = (clientY - startY) / zoom;
 
-    if (isDrawing && currentLine) {
-      setCurrentLine({
-        ...currentLine,
-        points: [...currentLine.points, getMousePos(e)],
-      });
-    }
-  };
+      if (type === "pan") {
+        const dxRaw = clientX - startX;
+        const dyRaw = clientY - startY;
+        setPan({ x: initialData.x + dxRaw, y: initialData.y + dyRaw });
+        return;
+      }
 
-  const handlePointerUpGlobal = () => {
-    if (isPanning) {
-      setIsPanning(false);
-      setLastPointerPos(null);
-    }
+      if (type === "resize" && resizingNoteId) {
+        setNotes((prevNotes) =>
+          prevNotes.map((n) => {
+            if (n.id === resizingNoteId) {
+              if (n.type === "text") {
+                const delta = Math.abs(dx) > Math.abs(dy) ? dx : dy;
+                return {
+                  ...n,
+                  fontSize: Math.max(8, initialData.fontSize + delta * 0.4),
+                };
+              }
+              return {
+                ...n,
+                width: Math.max(50, initialData.width + dx),
+                height: Math.max(20, initialData.height + dy),
+              };
+            }
+            return n;
+          }),
+        );
+        return;
+      }
 
-    if (draggingNoteId) {
-      setDraggingNoteId(null);
-      setLastPointerPos(null);
-      saveData(lines, notes);
-    }
+      if (type === "drag" && draggingNoteId) {
+        setNotes((prevNotes) =>
+          prevNotes.map((n) =>
+            n.id === draggingNoteId
+              ? { ...n, x: initialData.x + dx, y: initialData.y + dy }
+              : n,
+          ),
+        );
+        return;
+      }
 
-    if (isDrawing && currentLine) {
-      const updatedLines = [...lines, currentLine];
-      setLines(updatedLines);
-      saveData(updatedLines, notes);
-      setCurrentLine(null);
-      setIsDrawing(false);
-    }
-  };
+      if (type === "draw") {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const rect = canvas.getBoundingClientRect();
+        const pos = {
+          x: (clientX - rect.left - pan.x) / zoom,
+          y: (clientY - rect.top - pan.y) / zoom,
+        };
+        setCurrentLine((prev) =>
+          prev ? { ...prev, points: [...prev.points, pos] } : null,
+        );
+      }
+    };
+
+    const handleUp = () => {
+      if (!interactionRef.current) return;
+      const { type } = interactionRef.current;
+
+      interactionRef.current = null;
+
+      if (type === "pan") {
+        setIsPanning(false);
+      } else if (type === "drag") {
+        setDraggingNoteId(null);
+        saveData(linesRef.current, notesRef.current);
+      } else if (type === "resize") {
+        setResizingNoteId(null);
+        saveData(linesRef.current, notesRef.current);
+      } else if (type === "draw") {
+        const finalLine = currentLineRef.current || currentLine;
+        if (finalLine) {
+          setLines((prev) => {
+            const updated = [...prev, finalLine];
+            saveData(updated, notesRef.current);
+            return updated;
+          });
+        }
+        setCurrentLine(null);
+        setIsDrawing(false);
+      }
+    };
+
+    window.addEventListener("mousemove", handleMove);
+    window.addEventListener("mouseup", handleUp);
+    window.addEventListener("touchmove", handleMove);
+    window.addEventListener("touchend", handleUp);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMove);
+      window.removeEventListener("mouseup", handleUp);
+      window.removeEventListener("touchmove", handleMove);
+      window.removeEventListener("touchend", handleUp);
+    };
+  }, [zoom, pan, resizingNoteId, draggingNoteId]);
+
+  const currentLineRef = useRef<Line | null>(null);
+  useEffect(() => {
+    currentLineRef.current = currentLine;
+  }, [currentLine]);
 
   const handleNoteDragStart = (
     e: React.MouseEvent | React.TouchEvent,
     id: string,
   ) => {
     e.stopPropagation();
+    const note = notes.find((n) => n.id === id);
+    if (!note) return;
+
     setDraggingNoteId(id);
     let clientX, clientY;
     if ("touches" in e) {
@@ -375,7 +496,13 @@ const WhiteBoard = () => {
       clientX = (e as React.MouseEvent).clientX;
       clientY = (e as React.MouseEvent).clientY;
     }
-    setLastPointerPos({ x: clientX, y: clientY });
+
+    interactionRef.current = {
+      type: "drag",
+      startX: clientX,
+      startY: clientY,
+      initialData: { x: note.x, y: note.y },
+    };
   };
 
   const updateNoteText = (id: string, text: string) => {
@@ -391,11 +518,14 @@ const WhiteBoard = () => {
   };
 
   const handleClear = () => {
-    if (confirm("Are you sure you want to clear the whiteboard?")) {
-      setLines([]);
-      setNotes([]);
-      saveData([], []);
-    }
+    setShowClearConfirm(true);
+  };
+
+  const confirmClear = () => {
+    setLines([]);
+    setNotes([]);
+    saveData([], []);
+    setShowClearConfirm(false);
   };
 
   useEffect(() => {
@@ -461,6 +591,8 @@ const WhiteBoard = () => {
     } else if (tool === "note") {
       const svg = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M11.9426 1.25H12.0574C14.3658 1.24999 16.1748 1.24998 17.5863 1.43975C19.031 1.63399 20.1711 2.03933 21.0659 2.93414C21.9607 3.82895 22.366 4.96897 22.5603 6.41371C22.75 7.82519 22.75 9.63423 22.75 11.9426V15C22.75 19.2802 19.2802 22.75 15 22.75H11.9426C9.63423 22.75 7.82519 22.75 6.41371 22.5603C4.96897 22.366 3.82895 21.9607 2.93414 21.0659C2.03933 20.1711 1.63399 19.031 1.43975 17.5863C1.24998 16.1748 1.24999 14.3658 1.25 12.0574V11.9426C1.24999 9.63423 1.24998 7.82519 1.43975 6.41371C1.63399 4.96897 2.03933 3.82895 2.93414 2.93414C3.82895 2.03933 4.96897 1.63399 6.41371 1.43975C7.82519 1.24998 9.63423 1.24999 11.9426 1.25ZM6.61358 2.92637C5.33517 3.09825 4.56445 3.42514 3.9948 3.9948C3.42514 4.56445 3.09825 5.33517 2.92637 6.61358C2.75159 7.91356 2.75 9.62177 2.75 12C2.75 14.3782 2.75159 16.0864 2.92637 17.3864C3.09825 18.6648 3.42514 19.4355 3.9948 20.0052C4.56445 20.5749 5.33517 20.9018 6.61358 21.0736C7.91356 21.2484 9.62177 21.25 12 21.25H14.2504C14.2538 19.8837 14.2835 18.9862 14.5314 18.2232C15.1002 16.4726 16.4726 15.1002 18.2232 14.5314C18.9862 14.2835 19.8837 14.2538 21.25 14.2504V12C21.25 9.62177 21.2484 7.91356 21.0736 6.61358C20.9018 5.33517 20.5749 4.56445 20.0052 3.9948C19.4355 3.42514 18.6648 3.09825 17.3864 2.92637C16.0864 2.75159 14.3782 2.75 12 2.75C9.62177 2.75 7.91356 2.75159 6.61358 2.92637ZM21.2053 15.7513C19.8482 15.7571 19.2061 15.7892 18.6867 15.958C17.3928 16.3784 16.3784 17.3928 15.958 18.6867C15.7892 19.2061 15.7571 19.8482 15.7513 21.2053C18.6025 20.8637 20.8637 18.6025 21.2053 15.7513Z" fill="black"/></svg>`;
       return `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}") 12 12, crosshair`;
+    } else if (tool === "text") {
+      return "text";
     } else if (tool === "pan") {
       return isPanning ? "grabbing" : "grab";
     }
@@ -469,13 +601,8 @@ const WhiteBoard = () => {
 
   return (
     <div
-      className="bg-[#fafafa] h-full w-full rounded-[10px] overflow-hidden relative border border-[rgba(0,0,0,0.1)]"
+      className="bg-[#fafafa] h-full w-full rounded-[10px] overflow-hidden relative border border-[rgba(0,0,0,0.1)] select-none"
       ref={containerRef}
-      onMouseMove={handlePointerMoveGlobal}
-      onMouseUp={handlePointerUpGlobal}
-      onMouseLeave={handlePointerUpGlobal}
-      onTouchMove={handlePointerMoveGlobal}
-      onTouchEnd={handlePointerUpGlobal}
     >
       {!activeTask ? (
         <div className="flex flex-col items-center justify-center h-full w-full opacity-50 absolute inset-0 z-10 bg-white">
@@ -530,10 +657,22 @@ const WhiteBoard = () => {
               <HandIcon className="size-4" />
             </button>
             <button
-              onClick={() => setTool("note")}
+              onClick={() => {
+                setTool("note");
+                setSelectedNoteId(null);
+              }}
               className={`p-[6px] rounded-[6px] text-[13px] font-medium transition-colors ${tool === "note" ? "bg-black text-white" : "hover:bg-gray-100 text-black"}`}
             >
               <NoteIcon className="size-4" />
+            </button>
+            <button
+              onClick={() => {
+                setTool("text");
+                setSelectedNoteId(null);
+              }}
+              className={`p-[6px] rounded-[6px] text-[13px] font-medium transition-colors ${tool === "text" ? "bg-black text-white" : "hover:bg-gray-100 text-black"}`}
+            >
+              <TextIcon className="size-4" />
             </button>
             <button
               onClick={handleClear}
@@ -640,13 +779,24 @@ const WhiteBoard = () => {
                   </div>
                 );
               })()
-            : tool === "pen" && (
+            : (tool === "pen" || tool === "text") && (
                 <div className="absolute top-[10px] right-[10px] z-20 flex gap-[10px] bg-white p-[8px] rounded-[10px] shadow-sm border border-[rgba(0,0,0,0.1)] items-center">
                   <div className="flex gap-[4px]">
                     {COLORS.map((color) => (
                       <button
                         key={color}
-                        onClick={() => setPenColor(color)}
+                        onClick={() =>
+                          selectedNoteId
+                            ? null
+                            : tool === "text"
+                              ? null
+                              : setPenColor(color)
+                        }
+                        onMouseDown={(e) => {
+                          if (tool === "text") {
+                            setPenColor(color);
+                          }
+                        }}
                         className={`w-[26px] h-[26px] rounded-[6px] flex items-center justify-center transition-colors ${
                           penColor === color
                             ? "bg-gray-100"
@@ -660,17 +810,21 @@ const WhiteBoard = () => {
                       </button>
                     ))}
                   </div>
-                  <div className="w-px h-[20px] bg-gray-200 mx-[4px]"></div>
-                  <div className="w-[100px] px-[5px] flex items-center">
-                    <input
-                      type="range"
-                      min="1"
-                      max="20"
-                      value={penWidth}
-                      onChange={(e) => setPenWidth(Number(e.target.value))}
-                      className="w-full h-[4px] bg-gray-200 rounded-lg appearance-none cursor-pointer accent-black"
-                    />
-                  </div>
+                  {tool === "pen" && (
+                    <>
+                      <div className="w-px h-[20px] bg-gray-200 mx-[4px]"></div>
+                      <div className="w-[100px] px-[5px] flex items-center">
+                        <input
+                          type="range"
+                          min="1"
+                          max="20"
+                          value={penWidth}
+                          onChange={(e) => setPenWidth(Number(e.target.value))}
+                          className="w-full h-[4px] bg-gray-200 rounded-lg appearance-none cursor-pointer accent-black"
+                        />
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
 
@@ -682,27 +836,38 @@ const WhiteBoard = () => {
             style={{ cursor: getCursor() }}
           />
           <div
-            className="absolute inset-0 z-10 pointer-events-none origin-top-left"
+            className="absolute top-0 left-0 z-10 pointer-events-none origin-top-left"
             style={{
               transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+              width: 0,
+              height: 0,
             }}
           >
             {notes.map((note) => (
               <div
                 key={note.id}
-                className={`absolute shadow-md rounded-[4px] flex flex-col pointer-events-auto transition-shadow ${
+                className={`absolute ${note.type === "text" ? "" : "shadow-md"} rounded-[4px] flex flex-col pointer-events-auto transition-shadow ${
                   draggingNoteId === note.id
-                    ? "shadow-xl z-30"
+                    ? note.type === "text"
+                      ? "z-30"
+                      : "shadow-xl z-30"
                     : selectedNoteId === note.id
-                      ? "shadow-lg z-20 ring-2 ring-blue-400"
-                      : "hover:shadow-lg z-10"
+                      ? note.type === "text"
+                        ? "z-20 border border-dashed border-[rgba(0,0,0,0.1)]"
+                        : "shadow-lg z-20 ring-2 ring-blue-400"
+                      : note.type === "text"
+                        ? "hover:border hover:border-dashed hover:border-[rgba(0,0,0,0.1)] z-10"
+                        : "hover:shadow-lg z-10"
                 }`}
                 style={{
                   left: note.x,
                   top: note.y,
-                  backgroundColor: note.color,
-                  width: "200px",
-                  minHeight: "150px",
+                  backgroundColor:
+                    note.type === "text" ? "transparent" : note.color,
+                  width: note.type === "text" ? "auto" : "200px",
+                  height: note.type === "text" ? "auto" : "150px",
+                  minWidth: note.type === "text" ? "fit-content" : "200px",
+                  minHeight: note.type === "text" ? "0" : "150px",
                 }}
                 onMouseDown={(e) => {
                   e.stopPropagation();
@@ -741,18 +906,46 @@ const WhiteBoard = () => {
                   });
                 }}
               >
-                <div
-                  className="h-[15px] w-full flex justify-end items-center px-[10px] cursor-move select-none rounded-t-[4px] transition-colors"
-                  onMouseDown={(e) => {
-                    e.stopPropagation();
-                    handleNoteDragStart(e, note.id);
-                  }}
-                  onTouchStart={(e) => handleNoteDragStart(e, note.id)}
-                ></div>
+                {note.type !== "text" && (
+                  <div
+                    className="h-[15px] w-full flex justify-end items-center px-[10px] cursor-move select-none rounded-t-[4px] transition-colors"
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      handleNoteDragStart(e, note.id);
+                    }}
+                    onTouchStart={(e) => handleNoteDragStart(e, note.id)}
+                  ></div>
+                )}
                 <AutoResizeTextArea
                   note={note}
                   updateNoteText={updateNoteText}
+                  isFocused={focusedNoteId === note.id}
+                  setIsFocused={(focused) =>
+                    setFocusedNoteId(focused ? note.id : null)
+                  }
                 />
+                {selectedNoteId === note.id && note.type === "text" && (
+                  <div
+                    className="absolute bottom-0 right-0 w-[12px] h-[12px] cursor-nwse-resize z-40 flex items-center justify-center"
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      setResizingNoteId(note.id);
+                      interactionRef.current = {
+                        type: "resize",
+                        startX: e.clientX,
+                        startY: e.clientY,
+                        initialData: {
+                          width: note.width || 200,
+                          height: note.height || 150,
+                          fontSize: note.fontSize || 14,
+                        },
+                      };
+                    }}
+                  >
+                    <div className="w-[6px] h-[6px] border-r-2 border-b-2 border-gray-400"></div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -803,6 +996,28 @@ const WhiteBoard = () => {
           )}
         </>
       )}
+
+      <Modal
+        isOpen={showClearConfirm}
+        onClose={() => setShowClearConfirm(false)}
+        onConfirm={confirmClear}
+        mainText="Delete"
+        cancelText="Cancel"
+        className="w-[420px]"
+      >
+        <div className="flex flex-col items-center text-center mt-2">
+          <div className="w-[60px] h-[60px] bg-red-50 rounded-full flex items-center justify-center mb-6">
+            <TrashIcon className="size-8 text-red-500" />
+          </div>
+          <p className="text-[15px] font-medium text-gray-900 mb-2 leading-relaxed">
+            Are you sure you want to clear the whiteboard?
+          </p>
+          <p className="text-[13px] text-gray-500 leading-relaxed px-4">
+            This action will permanently delete all your drawings and notes.
+            This cannot be undone.
+          </p>
+        </div>
+      </Modal>
     </div>
   );
 };

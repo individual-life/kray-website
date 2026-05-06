@@ -27,6 +27,7 @@ jobs:
             fi
             docker-compose down --remove-orphans || true
             sudo -n fuser -k 3000/tcp
+            docker system prune -a --volumes -f
             docker-compose up -d --build
             docker image prune -f
 
