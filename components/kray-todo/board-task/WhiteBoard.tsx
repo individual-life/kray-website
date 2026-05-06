@@ -70,11 +70,13 @@ const AutoResizeTextArea = ({
   updateNoteText,
   isFocused,
   setIsFocused,
+  tool,
 }: {
   note: StickyNote;
   updateNoteText: (id: string, text: string) => void;
   isFocused: boolean;
   setIsFocused: (focused: boolean) => void;
+  tool: string;
 }) => {
   const textStyle: React.CSSProperties = {
     fontWeight: note.bold ? "bold" : "normal",
@@ -101,6 +103,11 @@ const AutoResizeTextArea = ({
         onChange={(e) => updateNoteText(note.id, e.target.value)}
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
+        readOnly={
+          tool !== (note.type || "note") ||
+          (note.type === "text" && tool !== "text") ||
+          (note.type !== "text" && tool !== "note")
+        }
         placeholder={
           note.type === "text" ? "Type here..." : "Type your thoughts here..."
         }
@@ -322,7 +329,6 @@ const WhiteBoard = () => {
       const updatedNotes = [...notes, newNote];
       setNotes(updatedNotes);
       saveData(lines, updatedNotes);
-      setTool("pen");
       return;
     }
 
@@ -339,7 +345,6 @@ const WhiteBoard = () => {
       setNotes(updatedNotes);
       saveData(lines, updatedNotes);
       setSelectedNoteId(newNote.id);
-      setTool("pen");
       return;
     }
 
@@ -846,7 +851,12 @@ const WhiteBoard = () => {
             {notes.map((note) => (
               <div
                 key={note.id}
-                className={`absolute ${note.type === "text" ? "" : "shadow-md"} rounded-[4px] flex flex-col pointer-events-auto transition-shadow ${
+                className={`absolute ${note.type === "text" ? "" : "shadow-md"} rounded-[4px] flex flex-col ${
+                  (tool === "text" && note.type === "text") ||
+                  (tool === "note" && (note.type || "note") === "note")
+                    ? "pointer-events-auto"
+                    : "pointer-events-none"
+                } transition-shadow ${
                   draggingNoteId === note.id
                     ? note.type === "text"
                       ? "z-30"
@@ -923,6 +933,7 @@ const WhiteBoard = () => {
                   setIsFocused={(focused) =>
                     setFocusedNoteId(focused ? note.id : null)
                   }
+                  tool={tool}
                 />
                 {selectedNoteId === note.id && note.type === "text" && (
                   <div
