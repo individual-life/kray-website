@@ -32,7 +32,9 @@ interface StickyNote {
   underline?: boolean;
   fontSize?: number;
   fontFamily?: string;
-  type?: "note" | "text";
+  type?: "note" | "text" | "image";
+  imageUrl?: string;
+  locked?: boolean;
   width?: number;
   height?: number;
 }
@@ -87,6 +89,14 @@ const AutoResizeTextArea = ({
     color: note.type === "text" ? note.color : "rgba(0,0,0,0.8)",
   };
 
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (isFocused && textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  }, [isFocused]);
+
   return (
     <div
       className={`relative ${note.type === "text" ? "min-w-max" : "w-full flex-1 min-h-[135px]"} grid`}
@@ -99,6 +109,7 @@ const AutoResizeTextArea = ({
         {note.text ? note.text + " " : "Type here..."}
       </div>
       <textarea
+        ref={textareaRef}
         value={note.text}
         onChange={(e) => updateNoteText(note.id, e.target.value)}
         onFocus={() => setIsFocused(true)}
@@ -308,6 +319,7 @@ const WhiteBoard = () => {
     }
 
     if (tool === "pan") {
+      e.preventDefault();
       setIsPanning(true);
       interactionRef.current = {
         type: "pan",
@@ -319,6 +331,7 @@ const WhiteBoard = () => {
     }
 
     if (tool === "note") {
+      e.preventDefault();
       const newNote: StickyNote = {
         id: Date.now().toString(),
         x: pos.x,
@@ -329,10 +342,12 @@ const WhiteBoard = () => {
       const updatedNotes = [...notes, newNote];
       setNotes(updatedNotes);
       saveData(lines, updatedNotes);
+      setFocusedNoteId(newNote.id);
       return;
     }
 
     if (tool === "text") {
+      e.preventDefault();
       const newNote: StickyNote = {
         id: Date.now().toString(),
         x: pos.x,
@@ -345,6 +360,7 @@ const WhiteBoard = () => {
       setNotes(updatedNotes);
       saveData(lines, updatedNotes);
       setSelectedNoteId(newNote.id);
+      setFocusedNoteId(newNote.id);
       return;
     }
 
@@ -490,7 +506,7 @@ const WhiteBoard = () => {
   ) => {
     e.stopPropagation();
     const note = notes.find((n) => n.id === id);
-    if (!note) return;
+    if (!note || note.locked) return;
 
     setDraggingNoteId(id);
     let clientX, clientY;
@@ -511,15 +527,21 @@ const WhiteBoard = () => {
   };
 
   const updateNoteText = (id: string, text: string) => {
-    const updatedNotes = notes.map((n) => (n.id === id ? { ...n, text } : n));
-    setNotes(updatedNotes);
-    saveData(lines, updatedNotes);
+    setNotes((prev) => {
+      const updated = prev.map((n) => (n.id === id ? { ...n, text } : n));
+      saveData(linesRef.current, updated);
+      return updated;
+    });
   };
 
   const deleteNote = (id: string) => {
-    const updatedNotes = notes.filter((n) => n.id !== id);
-    setNotes(updatedNotes);
-    saveData(lines, updatedNotes);
+    setNotes((prev) => {
+      const updated = prev.filter((n) => n.id !== id);
+      saveData(linesRef.current, updated);
+      return updated;
+    });
+    if (selectedNoteId === id) setSelectedNoteId(null);
+    if (focusedNoteId === id) setFocusedNoteId(null);
   };
 
   const handleClear = () => {
@@ -582,9 +604,72 @@ const WhiteBoard = () => {
       }
     };
 
+    const handlePaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf("image") !== -1) {
+          const blob = items[i].getAsFile();
+          if (!blob) continue;
+
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            const imageUrl = event.target?.result as string;
+            const img = new Image();
+            img.onload = () => {
+              const canvas = canvasRef.current;
+              if (!canvas) return;
+              const centerX = (canvas.width / 2 - pan.x) / zoom;
+              const centerY = (canvas.height / 2 - pan.y) / zoom;
+
+              let w = img.width;
+              let h = img.height;
+              const maxW = 500;
+              const maxH = 500;
+
+              if (w > maxW) {
+                h = h * (maxW / w);
+                w = maxW;
+              }
+              if (h > maxH) {
+                w = w * (maxH / h);
+                h = maxH;
+              }
+
+              const newNote: StickyNote = {
+                id: Date.now().toString(),
+                x: centerX - w / 2,
+                y: centerY - h / 2,
+                text: "",
+                color: "transparent",
+                type: "image",
+                imageUrl,
+                width: w,
+                height: h,
+              };
+
+              setNotes((prev) => {
+                const updated = [...prev, newNote];
+                saveData(linesRef.current, updated);
+                return updated;
+              });
+              setSelectedNoteId(newNote.id);
+            };
+            img.src = imageUrl;
+          };
+          reader.readAsDataURL(blob);
+        }
+      }
+    };
+
     document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [selectedNoteId, notes, lines, clipboardNote]);
+    document.addEventListener("paste", handlePaste);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("paste", handlePaste);
+    };
+  }, [selectedNoteId, notes, lines, clipboardNote, pan, zoom]);
 
   const getCursor = () => {
     if (tool === "pen") {
@@ -851,21 +936,24 @@ const WhiteBoard = () => {
             {notes.map((note) => (
               <div
                 key={note.id}
-                className={`absolute ${note.type === "text" ? "" : "shadow-md"} rounded-[4px] flex flex-col ${
+                className={`absolute ${note.type === "text" || note.type === "image" ? "" : "shadow-md"} rounded-[4px] flex flex-col ${
                   (tool === "text" && note.type === "text") ||
-                  (tool === "note" && (note.type || "note") === "note")
+                  (tool === "note" && (note.type || "note") === "note") ||
+                  note.type === "image"
                     ? "pointer-events-auto"
                     : "pointer-events-none"
                 } transition-shadow ${
                   draggingNoteId === note.id
-                    ? note.type === "text"
+                    ? note.type === "text" || note.type === "image"
                       ? "z-30"
                       : "shadow-xl z-30"
                     : selectedNoteId === note.id
-                      ? note.type === "text"
-                        ? "z-20 border border-dashed border-[rgba(0,0,0,0.1)]"
-                        : "shadow-lg z-20 ring-2 ring-blue-400"
-                      : note.type === "text"
+                      ? note.type === "image"
+                        ? "z-20"
+                        : note.type === "text"
+                          ? "z-20 border border-dashed border-[rgba(0,0,0,0.1)]"
+                          : "shadow-lg z-20 ring-2 ring-blue-400"
+                      : note.type === "text" || note.type === "image"
                         ? "hover:border hover:border-dashed hover:border-[rgba(0,0,0,0.1)] z-10"
                         : "hover:shadow-lg z-10"
                 }`}
@@ -873,11 +961,20 @@ const WhiteBoard = () => {
                   left: note.x,
                   top: note.y,
                   backgroundColor:
-                    note.type === "text" ? "transparent" : note.color,
-                  width: note.type === "text" ? "auto" : "200px",
-                  height: note.type === "text" ? "auto" : "150px",
-                  minWidth: note.type === "text" ? "fit-content" : "200px",
-                  minHeight: note.type === "text" ? "0" : "150px",
+                    note.type === "text" || note.type === "image"
+                      ? "transparent"
+                      : note.color,
+                  width:
+                    note.type === "text"
+                      ? "auto"
+                      : `${note.width || (note.type === "image" ? 300 : 200)}px`,
+                  height:
+                    note.type === "text"
+                      ? "auto"
+                      : `${note.height || (note.type === "image" ? 200 : 150)}px`,
+                  minWidth: note.type === "text" ? "fit-content" : "50px",
+                  minHeight: note.type === "text" ? "0" : "20px",
+                  cursor: note.locked ? "default" : "move",
                 }}
                 onMouseDown={(e) => {
                   e.stopPropagation();
@@ -926,37 +1023,58 @@ const WhiteBoard = () => {
                     onTouchStart={(e) => handleNoteDragStart(e, note.id)}
                   ></div>
                 )}
-                <AutoResizeTextArea
-                  note={note}
-                  updateNoteText={updateNoteText}
-                  isFocused={focusedNoteId === note.id}
-                  setIsFocused={(focused) =>
-                    setFocusedNoteId(focused ? note.id : null)
-                  }
-                  tool={tool}
-                />
-                {selectedNoteId === note.id && note.type === "text" && (
-                  <div
-                    className="absolute bottom-0 right-0 w-[12px] h-[12px] cursor-nwse-resize z-40 flex items-center justify-center"
-                    onMouseDown={(e) => {
-                      e.stopPropagation();
-                      e.preventDefault();
-                      setResizingNoteId(note.id);
-                      interactionRef.current = {
-                        type: "resize",
-                        startX: e.clientX,
-                        startY: e.clientY,
-                        initialData: {
-                          width: note.width || 200,
-                          height: note.height || 150,
-                          fontSize: note.fontSize || 14,
-                        },
-                      };
-                    }}
-                  >
-                    <div className="w-[6px] h-[6px] border-r-2 border-b-2 border-gray-400"></div>
+                {note.type === "image" ? (
+                  <div className="w-full h-full relative overflow-hidden rounded-[4px]">
+                    <img
+                      src={note.imageUrl}
+                      alt="Pasted content"
+                      className="w-full h-full object-cover pointer-events-none"
+                    />
                   </div>
+                ) : (
+                  <AutoResizeTextArea
+                    note={note}
+                    updateNoteText={updateNoteText}
+                    isFocused={focusedNoteId === note.id}
+                    setIsFocused={(focused) => {
+                      if (focused) {
+                        setFocusedNoteId(note.id);
+                      } else {
+                        setFocusedNoteId((prev) =>
+                          prev === note.id ? null : prev,
+                        );
+                        if (!note.text.trim()) {
+                          deleteNote(note.id);
+                        }
+                      }
+                    }}
+                    tool={tool}
+                  />
                 )}
+                {selectedNoteId === note.id &&
+                  (note.type === "text" || note.type === "image") &&
+                  !note.locked && (
+                    <div
+                      className="absolute bottom-0 right-0 w-[12px] h-[12px] cursor-nwse-resize z-40 flex items-center justify-center"
+                      onMouseDown={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        setResizingNoteId(note.id);
+                        interactionRef.current = {
+                          type: "resize",
+                          startX: e.clientX,
+                          startY: e.clientY,
+                          initialData: {
+                            width: note.width || 200,
+                            height: note.height || 150,
+                            fontSize: note.fontSize || 14,
+                          },
+                        };
+                      }}
+                    >
+                      <div className="w-[6px] h-[6px] border-r-2 border-b-2 border-gray-400"></div>
+                    </div>
+                  )}
               </div>
             ))}
           </div>
@@ -991,6 +1109,27 @@ const WhiteBoard = () => {
               >
                 <span>Copy</span>
                 <span className="text-[12px] text-gray-400">Ctrl + C</span>
+              </button>
+              <div className="h-px bg-gray-100 my-[4px]"></div>
+              <button
+                className="w-full flex justify-between items-center px-[12px] py-[8px] hover:bg-gray-100 text-left text-[12px] text-gray-700"
+                onClick={() => {
+                  const noteId = contextMenu.noteId;
+                  setNotes((prev) => {
+                    const updated = prev.map((n) =>
+                      n.id === noteId ? { ...n, locked: !n.locked } : n,
+                    );
+                    saveData(linesRef.current, updated);
+                    return updated;
+                  });
+                  setContextMenu(null);
+                }}
+              >
+                <span>
+                  {notes.find((n) => n.id === contextMenu.noteId)?.locked
+                    ? "Unlock"
+                    : "Lock"}
+                </span>
               </button>
               <div className="h-px bg-gray-100 my-[4px]"></div>
               <button
