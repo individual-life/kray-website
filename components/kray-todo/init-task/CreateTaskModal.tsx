@@ -40,8 +40,8 @@ const CreateTaskModal = () => {
     setIsDropdownOpen(false);
   };
 
-  const selectedGroupName = groupId 
-    ? groups.find(g => g.id === groupId)?.name || "General Task"
+  const selectedGroupName = groupId
+    ? groups.find((g) => g.id === groupId)?.name || "General Task"
     : "General Task";
 
   const handleConfirm = () => {
@@ -106,32 +106,42 @@ const CreateTaskModal = () => {
 
           <div className="flex flex-col gap-[5px] relative">
             <label className=" text-[14px] font-normal">
-              Group <span className="text-[rgba(0,0,0,0.3)] font-normal ml-[5px]">(Optional)</span>
+              Group{" "}
+              <span className="text-[rgba(0,0,0,0.3)] font-normal ml-[5px]">
+                (Optional)
+              </span>
             </label>
-            
+
             {/* Custom Dropdown Trigger */}
-            <div 
+            <div
               onClick={(e) => {
                 e.stopPropagation();
                 setIsDropdownOpen(!isDropdownOpen);
               }}
               className="w-full px-[15px] py-[10px] rounded-[8px] border border-[rgba(0,0,0,0.1)] flex justify-between items-center cursor-pointer bg-white transition-all hover:border-[rgba(0,0,0,0.3)]"
             >
-              <span className="text-[13px] text-black">{selectedGroupName}</span>
-              <svg 
-                className={`w-4 h-4 transition-transform duration-200 ${isDropdownOpen ? "rotate-180" : ""}`} 
-                fill="none" 
-                stroke="currentColor" 
+              <span className="text-[13px] text-black">
+                {selectedGroupName}
+              </span>
+              <svg
+                className={`w-4 h-4 transition-transform duration-200 ${isDropdownOpen ? "rotate-180" : ""}`}
+                fill="none"
+                stroke="currentColor"
                 viewBox="0 0 24 24"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="19 9l-7 7-7-7" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="19 9l-7 7-7-7"
+                />
               </svg>
             </div>
 
             {/* Custom Dropdown Options */}
             {isDropdownOpen && (
               <div className="absolute top-full left-0 w-full mt-[5px] bg-white border border-[rgba(0,0,0,0.1)] rounded-[8px] shadow-lg z-[100] overflow-hidden">
-                <div 
+                <div
                   onClick={() => {
                     setGroupId("");
                     setIsDropdownOpen(false);
