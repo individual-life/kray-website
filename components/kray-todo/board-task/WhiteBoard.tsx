@@ -979,7 +979,6 @@ const WhiteBoard = () => {
                 onMouseDown={(e) => {
                   e.stopPropagation();
                   setSelectedNoteId(note.id);
-                  // Track start pos to distinguish click vs drag
                   noteDragStartPos.current = { x: e.clientX, y: e.clientY };
                   handleNoteDragStart(e, note.id);
                 }}

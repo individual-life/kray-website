@@ -2,6 +2,7 @@ import Header from "@/components/kray-todo/Header";
 import NavBar from "@/components/kray-todo/NavBar";
 import React from "react";
 import type { Metadata } from "next";
+import Bottom from "@/components/kray-todo/Bottom";
 
 export const metadata: Metadata = {
   title: "Kray Todo — Task Management & Visual Whiteboard",
@@ -43,11 +44,11 @@ export default function KrayPlannerLayout({
 }) {
   return (
     <div className="bg-(--color-white-grey) w-full h-screen  px-[50px] pb-[20px]  flex flex-col">
-      {/* <Header /> */}
       <div className="flex flex-1">
         <NavBar hiddenLogout={true} />
-        <div className="flex-1 ml-[30px] mt-[30px]">{children}</div>
+        <div className="flex-1 ml-[30px] mt-[20px]">{children}</div>
       </div>
+      <Bottom />
     </div>
   );
 }

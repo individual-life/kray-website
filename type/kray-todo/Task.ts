@@ -4,8 +4,14 @@ export interface Task {
     title: string;
     description?: string;
     status: Status;
+    groupId?: string;
 }
 
+export interface TaskGroup {
+    id: string;
+    name: string;
+    color: string;
+}
 
 export interface Status {
     name: string;
