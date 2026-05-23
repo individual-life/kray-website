@@ -4,7 +4,7 @@ steps:
       [
         "build",
         "-t",
-        "asia-southeast1-docker.pkg.dev/kray-website/kray-respository/kray-website:prod",
+        "asia-southeast1-docker.pkg.dev/project-2c698630-3286-4033-9fa/repository-kray-web/kray-website:prod",
         ".",
       ]
 
@@ -12,7 +12,7 @@ steps:
     args:
       [
         "push",
-        "asia-southeast1-docker.pkg.dev/kray-website/kray-respository/kray-website:prod",
+        "asia-southeast1-docker.pkg.dev/project-2c698630-3286-4033-9fa/repository-kray-web/kray-website:prod",
       ]
 
   - name: "gcr.io/cloud-builders/gcloud"
@@ -21,8 +21,8 @@ steps:
     args:
       - "-c"
       - |
-        gcloud compute ssh 'nhutminh_tran_29@kray-web-instance' \
-         --zone='asia-southeast1-c' \
-         --command="sudo docker pull asia-southeast1-docker.pkg.dev/kray-website/kray-respository/kray-website:prod && sudo docker stop kray-website-container || true && sudo docker rm kray-website-container || true && sudo docker run -d --name kray-website-container -p 3000:3000 asia-southeast1-docker.pkg.dev/kray-website/kray-respository/kray-website:prod"
+        gcloud compute ssh 'minhnhutg532@instance-kray-web' \
+         --zone='asia-southeast1-b' \
+         --command="sudo docker pull asia-southeast1-docker.pkg.dev/project-2c698630-3286-4033-9fa/repository-kray-web/kray-website:prod && sudo docker stop kray-website-container || true && sudo docker rm kray-website-container || true && sudo docker run -d --name kray-website-container -p 3000:3000 asia-southeast1-docker.pkg.dev/project-2c698630-3286-4033-9fa/repository-kray-web/kray-website:prod"
 options:
   logging: CLOUD_LOGGING_ONLY
