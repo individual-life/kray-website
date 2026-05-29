@@ -305,10 +305,7 @@ const WhiteBoard = () => {
 
   const handlePointerDownCanvas = (e: React.MouseEvent | React.TouchEvent) => {
     if (!activeTask) return;
-    setSelectedNoteId(null);
-    setContextMenu(null);
 
-    const pos = getMousePos(e);
     let clientX, clientY;
     if ("touches" in e) {
       clientX = e.touches[0].clientX;
@@ -317,6 +314,59 @@ const WhiteBoard = () => {
       clientX = (e as React.MouseEvent).clientX;
       clientY = (e as React.MouseEvent).clientY;
     }
+
+    const canvas = canvasRef.current;
+    let elementUnder = null;
+    if (canvas) {
+      const originalPointerEvents = canvas.style.pointerEvents;
+      canvas.style.pointerEvents = "none";
+      elementUnder = document.elementFromPoint(clientX, clientY);
+      canvas.style.pointerEvents = originalPointerEvents;
+    }
+
+    let isResizeHandle = false;
+    let targetNoteId = null;
+    let current = elementUnder;
+    while (current && current !== document.body) {
+      if (current instanceof HTMLElement) {
+        if (current.dataset.resizeHandle === "true") {
+          isResizeHandle = true;
+        }
+        if (current.dataset.noteId) {
+          targetNoteId = current.dataset.noteId;
+          break;
+        }
+      }
+      current = current.parentElement;
+    }
+
+    if (isResizeHandle && targetNoteId) {
+      const targetNote = notes.find((n) => n.id === targetNoteId);
+      if (targetNote && !targetNote.locked) {
+        const noteW =
+          targetNote.width || (targetNote.type === "image" ? 300 : 200);
+        const noteH =
+          targetNote.height || (targetNote.type === "image" ? 200 : 150);
+        setResizingNoteId(targetNoteId);
+        setSelectedNoteId(targetNoteId);
+        interactionRef.current = {
+          type: "resize",
+          startX: clientX,
+          startY: clientY,
+          initialData: {
+            width: noteW,
+            height: noteH,
+            fontSize: targetNote.fontSize || 14,
+          },
+        };
+        return;
+      }
+    }
+
+    setSelectedNoteId(null);
+    setContextMenu(null);
+
+    const pos = getMousePos(e);
 
     if (tool === "pan") {
       e.preventDefault();
@@ -381,6 +431,44 @@ const WhiteBoard = () => {
     }
   };
 
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const clientX = e.clientX;
+    const clientY = e.clientY;
+
+    const rect = canvas.getBoundingClientRect();
+    const boardX = (clientX - rect.left - pan.x) / zoom;
+    const boardY = (clientY - rect.top - pan.y) / zoom;
+
+    // Find the note containing this coordinate, from top-most (last rendered) to bottom-most
+    const clickedNote = [...notes].reverse().find((note) => {
+      const noteW =
+        note.width ||
+        (note.type === "image" ? 300 : note.type === "text" ? 100 : 200);
+      const noteH =
+        note.height ||
+        (note.type === "image" ? 200 : note.type === "text" ? 50 : 150);
+      return (
+        boardX >= note.x &&
+        boardX <= note.x + noteW &&
+        boardY >= note.y &&
+        boardY <= note.y + noteH
+      );
+    });
+
+    if (clickedNote) {
+      setSelectedNoteId(clickedNote.id);
+      setContextMenu({
+        x: clientX,
+        y: clientY,
+        noteId: clickedNote.id,
+      });
+    }
+  };
+
   useEffect(() => {
     const handleMove = (e: MouseEvent | TouchEvent) => {
       if (!interactionRef.current) return;
@@ -415,6 +503,31 @@ const WhiteBoard = () => {
                 return {
                   ...n,
                   fontSize: Math.max(8, initialData.fontSize + delta * 0.4),
+                };
+              }
+              if (n.type === "image") {
+                const aspectRatio = initialData.width / initialData.height;
+                let newWidth = initialData.width + dx;
+                let newHeight = newWidth / aspectRatio;
+
+                if (Math.abs(dy) > Math.abs(dx)) {
+                  newHeight = initialData.height + dy;
+                  newWidth = newHeight * aspectRatio;
+                }
+
+                if (newWidth < 50) {
+                  newWidth = 50;
+                  newHeight = newWidth / aspectRatio;
+                }
+                if (newHeight < 50) {
+                  newHeight = 50;
+                  newWidth = newHeight * aspectRatio;
+                }
+
+                return {
+                  ...n,
+                  width: newWidth,
+                  height: newHeight,
                 };
               }
               return {
@@ -693,6 +806,9 @@ const WhiteBoard = () => {
     <div
       className="bg-[#fafafa] h-full w-full rounded-[10px] overflow-hidden relative border border-[rgba(0,0,0,0.1)] select-none"
       ref={containerRef}
+      onMouseDown={handlePointerDownCanvas}
+      onTouchStart={handlePointerDownCanvas}
+      onContextMenu={handleContextMenu}
     >
       {!activeTask ? (
         <div className="flex flex-col items-center justify-center h-full w-full opacity-50 absolute inset-0 z-10 bg-white">
@@ -718,7 +834,7 @@ const WhiteBoard = () => {
         </div>
       ) : (
         <>
-          <div className="absolute bottom-[10px] left-1/2 -translate-x-1/2 z-20 flex gap-[10px] bg-white p-[5px] rounded-[10px] shadow-sm border border-[rgba(0,0,0,0.1)] items-center">
+          <div className="absolute bottom-[10px] left-1/2 -translate-x-1/2 z-30 flex gap-[10px] bg-white p-[5px] rounded-[10px] shadow-sm border border-[rgba(0,0,0,0.1)] items-center">
             <button
               onClick={() => {
                 setTool("pen");
@@ -791,7 +907,7 @@ const WhiteBoard = () => {
           {selectedNoteId
             ? (() => {
                 const selectedNote = notes.find((n) => n.id === selectedNoteId);
-                if (!selectedNote) return null;
+                if (!selectedNote || selectedNote.type === "image") return null;
                 const updateFormat = (patch: Partial<StickyNote>) => {
                   const updatedNotes = notes.map((n) =>
                     n.id === selectedNoteId ? { ...n, ...patch } : n,
@@ -801,7 +917,7 @@ const WhiteBoard = () => {
                 };
                 return (
                   <div
-                    className="absolute top-[10px] right-[10px] z-20 flex gap-[8px] bg-white p-[8px] rounded-[10px] shadow-sm border border-[rgba(0,0,0,0.1)] items-center"
+                    className="absolute top-[10px] right-[10px] z-30 flex gap-[8px] bg-white p-[8px] rounded-[10px] shadow-sm border border-[rgba(0,0,0,0.1)] items-center"
                     onMouseDown={(e) => e.stopPropagation()}
                   >
                     <select
@@ -870,7 +986,7 @@ const WhiteBoard = () => {
                 );
               })()
             : (tool === "pen" || tool === "text") && (
-                <div className="absolute top-[10px] right-[10px] z-20 flex gap-[10px] bg-white p-[8px] rounded-[10px] shadow-sm border border-[rgba(0,0,0,0.1)] items-center">
+                <div className="absolute top-[10px] right-[10px] z-30 flex gap-[10px] bg-white p-[8px] rounded-[10px] shadow-sm border border-[rgba(0,0,0,0.1)] items-center">
                   <div className="flex gap-[4px]">
                     {COLORS.map((color) => (
                       <button
@@ -920,9 +1036,20 @@ const WhiteBoard = () => {
 
           <canvas
             ref={canvasRef}
-            onMouseDown={handlePointerDownCanvas}
-            onTouchStart={handlePointerDownCanvas}
-            className="absolute inset-0 z-0 touch-none"
+            onMouseDown={(e) => {
+              e.stopPropagation();
+              handlePointerDownCanvas(e);
+            }}
+            onTouchStart={(e) => {
+              e.stopPropagation();
+              handlePointerDownCanvas(e);
+            }}
+            onContextMenu={handleContextMenu}
+            className={`absolute inset-0 touch-none z-20 ${
+              tool === "pen" || tool === "eraser"
+                ? "pointer-events-auto"
+                : "pointer-events-none"
+            }`}
             style={{ cursor: getCursor() }}
           />
           <div
@@ -936,10 +1063,13 @@ const WhiteBoard = () => {
             {notes.map((note) => (
               <div
                 key={note.id}
+                data-note-id={note.id}
                 className={`absolute ${note.type === "text" || note.type === "image" ? "" : "shadow-md"} rounded-[4px] flex flex-col ${
-                  (tool === "text" && note.type === "text") ||
-                  (tool === "note" && (note.type || "note") === "note") ||
-                  note.type === "image"
+                  !note.locked &&
+                  (tool === "pan" ||
+                    (tool === "text" && note.type === "text") ||
+                    (tool === "note" && (note.type || "note") === "note") ||
+                    note.type === "image")
                     ? "pointer-events-auto"
                     : "pointer-events-none"
                 } transition-shadow ${
@@ -954,7 +1084,7 @@ const WhiteBoard = () => {
                           ? "z-20 border border-dashed border-[rgba(0,0,0,0.1)]"
                           : "shadow-lg z-20 ring-2 ring-blue-400"
                       : note.type === "text" || note.type === "image"
-                        ? "hover:border hover:border-dashed hover:border-[rgba(0,0,0,0.1)] z-10"
+                        ? "z-10"
                         : "hover:shadow-lg z-10"
                 }`}
                 style={{
@@ -979,6 +1109,7 @@ const WhiteBoard = () => {
                 onMouseDown={(e) => {
                   e.stopPropagation();
                   setSelectedNoteId(note.id);
+                  if (note.locked) return;
                   noteDragStartPos.current = { x: e.clientX, y: e.clientY };
                   handleNoteDragStart(e, note.id);
                 }}
@@ -999,6 +1130,7 @@ const WhiteBoard = () => {
                 }}
                 onTouchStart={(e) => {
                   setSelectedNoteId(note.id);
+                  if (note.locked) return;
                   handleNoteDragStart(e, note.id);
                 }}
                 onContextMenu={(e) => {
@@ -1012,14 +1144,18 @@ const WhiteBoard = () => {
                   });
                 }}
               >
-                {note.type !== "text" && (
+                {note.type !== "text" && note.type !== "image" && (
                   <div
                     className="h-[15px] w-full flex justify-end items-center px-[10px] cursor-move select-none rounded-t-[4px] transition-colors"
                     onMouseDown={(e) => {
                       e.stopPropagation();
+                      if (note.locked) return;
                       handleNoteDragStart(e, note.id);
                     }}
-                    onTouchStart={(e) => handleNoteDragStart(e, note.id)}
+                    onTouchStart={(e) => {
+                      if (note.locked) return;
+                      handleNoteDragStart(e, note.id);
+                    }}
                   ></div>
                 )}
                 {note.type === "image" ? (
@@ -1027,7 +1163,7 @@ const WhiteBoard = () => {
                     <img
                       src={note.imageUrl}
                       alt="Pasted content"
-                      className="w-full h-full object-cover pointer-events-none"
+                      className="w-full h-full object-contain pointer-events-none"
                     />
                   </div>
                 ) : (
@@ -1054,6 +1190,7 @@ const WhiteBoard = () => {
                   (note.type === "text" || note.type === "image") &&
                   !note.locked && (
                     <div
+                      data-resize-handle="true"
                       className="absolute bottom-0 right-0 w-[12px] h-[12px] cursor-nwse-resize z-40 flex items-center justify-center"
                       onMouseDown={(e) => {
                         e.stopPropagation();
@@ -1083,6 +1220,8 @@ const WhiteBoard = () => {
               className="fixed z-50 bg-white rounded-[8px] shadow-[0_4px_12px_rgba(0,0,0,0.15)] border border-gray-100 py-[4px] w-[170px]"
               style={{ left: contextMenu.x, top: contextMenu.y }}
               onContextMenu={(e) => e.preventDefault()}
+              onMouseDown={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
             >
               <button
                 className="w-full flex justify-between items-center px-[12px] py-[8px] hover:bg-gray-100 text-left text-[12px] text-gray-700"

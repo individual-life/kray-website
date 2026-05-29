@@ -1,12 +1,14 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { TaskService } from "@/lib/services/kray-todo/task";
 import { TaskGroup } from "@/type/kray-todo/Task";
 import Modal from "@/components/common/Modal";
 import { TrashIcon } from "@/public/icons/TrashIcon";
 
 const Bottom = () => {
+  const pathname = usePathname();
   const [groups, setGroups] = useState<TaskGroup[]>([]);
   const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -83,6 +85,10 @@ const Bottom = () => {
       TaskService.assignTaskToGroup(taskId, groupId);
     }
   };
+
+  if (pathname !== "/kray-todo" && pathname !== "/kray-todo/") {
+    return <div className="h-[40px]" />;
+  }
 
   return (
     <div className="h-[40px] flex justify-start gap-[5px]">

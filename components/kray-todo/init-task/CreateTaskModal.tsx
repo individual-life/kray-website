@@ -112,7 +112,6 @@ const CreateTaskModal = () => {
               </span>
             </label>
 
-            {/* Custom Dropdown Trigger */}
             <div
               onClick={(e) => {
                 e.stopPropagation();
@@ -137,8 +136,6 @@ const CreateTaskModal = () => {
                 />
               </svg>
             </div>
-
-            {/* Custom Dropdown Options */}
             {isDropdownOpen && (
               <div className="absolute top-full left-0 w-full mt-[5px] bg-white border border-[rgba(0,0,0,0.1)] rounded-[8px] shadow-lg z-[100] overflow-hidden">
                 <div
