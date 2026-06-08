@@ -7,6 +7,8 @@ import { ShowIcon } from "@/public/icons/ShowIcon";
 import { HideIcon } from "@/public/icons/HideIcon";
 import { useState, ChangeEvent } from "react";
 import Button from "../common/Button";
+import { Content } from "next/font/google";
+import ContentSection from "./ContentSection";
 
 const LoginSection = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -29,7 +31,9 @@ const LoginSection = () => {
 
   return (
     <div className="h-[calc(100vh-60px)] grid grid-cols-12 px-[9vw] gap-x-5">
-      <div className="col-span-8 mb-[50px] mt-[30px] rounded-[20px] relative flex flex-col justify-center items-center"></div>
+      <div className="col-span-8 mb-[30px]  mt-[10px] overflow-hidden rounded-[15px] relative flex flex-col justify-center items-center">
+        <ContentSection />
+      </div>
       <div className=" col-span-4  mb-[50px] mt-[30px] rounded-[20px] relative p-[20px] flex flex-col justify-center ">
         <div>
           <h1 className={`${poppins.className} text-[19px] font-medium`}>
