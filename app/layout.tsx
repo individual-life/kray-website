@@ -3,7 +3,7 @@ import "./globals.css";
 import { poppins } from "./fonts";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://kray-web.com"),
+  metadataBase: new URL("https://www.kray-web.com"),
   title: "Kray - Web & App Development",
   description:
     "Kray Web Solutions: Precision coding for peak performance. We craft mobile-first, SEO-optimized websites that ensure your business stays visible and ranks",
@@ -12,7 +12,7 @@ export const metadata: Metadata = {
     description:
       "Kray Web Solutions: Precision coding for peak performance. We craft mobile-first, SEO-optimized websites that ensure your business stays visible and ranks",
     type: "website",
-    url: "https://kray-web.com",
+    url: "https://www.kray-web.com",
     siteName: "Kray - Web & App Development",
     images: [
       {
