@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { poppins } from "./fonts";
+import UnsupportedScreen from "@/components/common/UnsupportedScreen";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.kray-web.com"),
@@ -32,7 +33,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${poppins.className} antialiased `}>{children}</body>
+      <body className={`${poppins.className} antialiased`}>
+        <div className="hidden min-[1440px]:block w-full h-full min-h-screen">
+          {children}
+        </div>
+        <div className="block min-[1440px]:hidden w-full h-full min-h-screen">
+          <UnsupportedScreen />
+        </div>
+      </body>
     </html>
   );
 }
