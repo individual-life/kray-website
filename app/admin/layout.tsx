@@ -1,3 +1,4 @@
+import Navigator from "@/components/admin/Navigator";
 import React from "react";
 
 export default function AdminLayout({
@@ -6,6 +7,11 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="bg-(--color-white-grey) w-full h-screen  px-[50px] pb-[20px]  flex flex-col"></div>
+    <div className="bg-(--color-white-grey) w-full h-screen flex flex-col">
+      <div className="flex h-screen w-full">
+        <Navigator />
+        <div className="w-full">{children}</div>
+      </div>
+    </div>
   );
 }

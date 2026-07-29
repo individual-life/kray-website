@@ -12,6 +12,7 @@ interface ModalProps {
   description?: string;
   cancelText?: string;
   mainText?: string;
+  width?: string;
 }
 
 const Modal = ({
@@ -24,6 +25,7 @@ const Modal = ({
   className,
   cancelText = "Cancel",
   mainText = "Save",
+  width = "425px",
 }: ModalProps) => {
   useEffect(() => {
     if (isOpen) {
@@ -41,7 +43,10 @@ const Modal = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs">
       <div
-        className={`bg-white w-[425px] p-4  ${className} rounded-2xl animate-in fade-in zoom-in duration-200`}
+        style={{
+          width: width,
+        }}
+        className={`bg-white p-4  ${className} rounded-2xl animate-in fade-in zoom-in duration-200`}
       >
         <div className="flex items-center justify-between ">
           <h3 className="text-[16px] font-medium">{title}</h3>

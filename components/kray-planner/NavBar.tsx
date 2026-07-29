@@ -17,7 +17,7 @@ const NavBar = () => {
   return (
     <div className="h-full flex flex-col justify-between">
       <div></div>
-      <div className="py-[8px] bg-white rounded-full w-[45px] flex flex-col justify-center items-center gap-[10px]">
+      <div className="py-2 bg-white rounded-full w-[45px] flex flex-col justify-center items-center gap-2.5">
         {krayPlannerSideNavData.map((item, index) => {
           const isActive = isActiveLink(item.href);
           return (
