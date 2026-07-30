@@ -1,7 +1,11 @@
-import React from "react";
+import HeaderSection from "@/components/notes/HeaderSection";
 
 const NotesPage = () => {
-  return <div>page</div>;
+  return (
+    <div>
+      <HeaderSection />
+    </div>
+  );
 };
 
 export default NotesPage;
