@@ -6,7 +6,7 @@ export default function KrayNotesLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="bg-(--color-white-grey) w-full h-screen  px-[50px] pb-[20px]  flex flex-col">
+    <div className="bg-(--color-white-grey) w-full flex flex-col">
       <Header />
       {children}
     </div>
